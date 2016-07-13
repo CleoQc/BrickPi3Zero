@@ -1,8 +1,6 @@
-
-
+import time
 from BrickPi import *
 
-print TYPE_SENSOR_EV3_COLOR_M3
 
 def debug(in_str):
     print(in_str)
@@ -16,18 +14,22 @@ class BrickPiColorSensor():
                      TYPE_SENSOR_EV3_COLOR_M1,  # 51 -> Ambient light mode
                      TYPE_SENSOR_EV3_COLOR_M2,  # 52 -> Color mode
                      TYPE_SENSOR_EV3_COLOR_M3,  # 53 -> Raw reflected light mode
-                     TYPE_SENSOR_EV3_COLOR_M4  # 54 -> Raw Color Components
+                     TYPE_SENSOR_EV3_COLOR_M4,  # 54 -> Raw Color Components
                     ]
-
-    nxt_color_mode = [
-                      TYPE_SENSOR_COLOR_FULL, # 36 
-                      TYPE_SENSOR_COLOR_RED,  # 37 red LED in the sensor
-                      TYPE_SENSOR_COLOR_GREEN,# 38 green LED 
-                      TYPE_SENSOR_COLOR_BLUE, # 39 blue LED 
-                      TYPE_SENSOR_COLOR_NONE, # 40 no LED 
+    nxt_color_mode = [TYPE_SENSOR_COLOR_FULL, # 36 
+                     TYPE_SENSOR_COLOR_RED,  # 37 red LED in the sensor
+                     TYPE_SENSOR_COLOR_GREEN,# 38 green LED 
+                     TYPE_SENSOR_COLOR_BLUE, # 39 blue LED 
+                     TYPE_SENSOR_COLOR_NONE, # 40 no LED 
+                     TYPE_SENSOR_LIGHT_OFF,  # 0 Light sensor off 
+                     TYPE_SENSOR_LIGHT_ON,   # Light sensor on 
                      ]
 
+    colors = ["None","Black","Blue","Green","Yellow","Red","White","Brown"]
+
     sensor_type = ["NXT","EV3"]
+
+    # dictionary to be able to offer a kid-readable string about the sensor mode
     sensor_modes = {
                 TYPE_SENSOR_EV3_COLOR_M0:"EV3 Reflected light mode",
                 TYPE_SENSOR_EV3_COLOR_M1:"EV3 Ambient light mode",
@@ -55,9 +57,9 @@ class BrickPiColorSensor():
         Exceptions:
         raises a ValueError if in_type is unknown
         """
-
+        BrickPiSetup()
         debug(" creating Color Sensor on port {}".format(in_port))
-        self.current_mode = None
+        self.mode = TYPE_SENSOR_COLOR_NONE
 
         if in_port >= 0 and in_port <= 3:
             self.port = in_port
@@ -74,7 +76,7 @@ class BrickPiColorSensor():
 
     def set_color_mode(self):
         """
-        sets the sensor to read in colors
+        sets the sensor to read colors
 
         usage:
         sensor type must be defined first (done at init() time)
@@ -84,17 +86,27 @@ class BrickPiColorSensor():
 
         """
         if self.type == "EV3":
-            self.mode = TYPE_SENSOR_EV3_COLOR_M2
+            self.set_mode(TYPE_SENSOR_EV3_COLOR_M2)
         elif self.type=="NXT":
-            self.mode = TYPE_SENSOR_COLOR_FULL
+            self.set_mode (TYPE_SENSOR_COLOR_FULL)
         else:
             raise ValueError("Unknown sensor type")
+            return
+        debug("Mode {1} on port {0}".format(self.port,self.mode))
 
 
-    def set_light_mode(self):
+    def set_mode(self,in_mode):
+        self.mode = in_mode
+        BrickPi.SensorType[self.port] = in_mode
+
+    def set_reflected_light_mode(self):
         """
         Sets the sensor to detect reflected light levels
         """
+        if self.type == "EV3":
+            self.set_mode(TYPE_SENSOR_EV3_COLOR_M0)
+        elif self.type=="NXT":
+            self.set_mode ( TYPE_SENSOR_LIGHT_ON)
         pass
 
     def set_ambient_light_mode(self):
@@ -110,22 +122,81 @@ class BrickPiColorSensor():
         tuple : first item is a string descriptor
                 second item is the ID
         """
+
         return self.sensor_modes[self.mode],self.mode
 
+    def set_next_color_lamp(self):
+        if self.type=="NXT":
+            debug("self.mode: {}".format(self.mode))
+            new_mode = self.mode+1 if self.mode < 40 else 37
+            debug("New mode:{}".format(new_mode))
+            self.set_mode(new_mode)
+            BrickPiSetupSensors()
+            BrickPiUpdateValues()
+
+    def set_green_lamp(self):
+        if self.type=="NXT":
+            self.set_mode ( TYPE_SENSOR_COLOR_GREEN)
+            BrickPiSetupSensors()
+            BrickPiUpdateValues()
+            debug("Green lamp")
+        else:
+            raise ValueError("Not an NXT color sensor")
+
+    def set_red_lamp(self):
+        if self.type=="NXT":
+            self.set_mode ( TYPE_SENSOR_COLOR_RED)
+            BrickPiSetupSensors()
+            BrickPiUpdateValues()
+            debug("Red lamp")
+        else:
+            raise ValueError("Not an NXT color sensor")
+
+    def set_blue_lamp(self):
+        if self.type=="NXT":
+            self.set_mode ( TYPE_SENSOR_COLOR_BLUE)
+            BrickPiSetupSensors()
+            BrickPiUpdateValues()
+            debug("Blue lamp")
+        else:
+            raise ValueError("Not an NXT color sensor")
+
+    def set_lamp_off(self):
+        if self.type=="NXT":
+            self.set_mode ( TYPE_SENSOR_COLOR_NONE)
+            BrickPiSetupSensors()
+            BrickPiUpdateValues()
+            debug("Lamp off")
+        else:
+            raise ValueError("Not an NXT color sensor")
+
+    def read(self):
+        """
+        returns current color as a string
+
+        args: None
+    
+        return: 
+            the string associated with the color, taken from colors array
+            the string "Error"  in case of issues
+        """
+
+        result = BrickPiUpdateValues()
+        if not result:
+            return self.colors[BrickPi.Sensor[self.port] ]
+        return("Error")
+
+
+    def wait_for_color(self,color):
+        pass
+
+##################################################################
+
 if __name__ == "__main__":
-    try:
-        ev3colorsensor = BrickPiColorSensor("NXT",PORT_1)
-        nxtcolorsensor = BrickPiColorSensor("EV3",PORT_3)
-    except ValueError as e:
-        print("wrong port {}".format(repr(e)))
+    colorsensor = BrickPiColorSensor("NXT",PORT_1)
+    colorsensor.set_red_lamp()
 
-    try:
-        ev3colorsensor.set_color_mode()
-        nxtcolorsensor.set_color_mode()
-    except Exception as e:
-        print("oops {}".format(repr(e)))
     
-    (modestr,mode)= ev3colorsensor.get_current_mode()
-    print modestr
-    
-
+    while True:
+        time.sleep(1)
+        colorsensor.set_next_color_lamp()
