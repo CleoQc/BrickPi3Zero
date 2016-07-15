@@ -74,6 +74,14 @@ class BrickPiColorSensor():
             raise ValueError("Unknown sensor type: %s"%str(in_type))
 
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self,exc_type,exc_value,traceback):
+        self.set_mode(TYPE_SENSOR_COLOR_NONE)
+        BrickPiSetupSensors()
+        BrickPiUpdateValues()
+
     def set_color_mode(self):
         """
         sets the sensor to read colors
@@ -98,6 +106,7 @@ class BrickPiColorSensor():
     def set_mode(self,in_mode):
         self.mode = in_mode
         BrickPi.SensorType[self.port] = in_mode
+        BrickPiSetupSensors()
 
     def set_reflected_light_mode(self):
         """
@@ -182,8 +191,13 @@ class BrickPiColorSensor():
         """
 
         result = BrickPiUpdateValues()
+        debug("Result: {}".format(result))
         if not result:
-            return self.colors[BrickPi.Sensor[self.port] ]
+            debug("Port: {}".format(self.port+1))
+            debug("Sensor Reading: {}".format(BrickPi.Sensor[self.port]))
+            if BrickPi.Sensor[self.port]<8:
+                debug( "Color is: {}".format(self.colors[BrickPi.Sensor[self.port] ]))
+                return self.colors[BrickPi.Sensor[self.port] ]
         return("Error")
 
 
@@ -192,11 +206,36 @@ class BrickPiColorSensor():
 
 ##################################################################
 
-if __name__ == "__main__":
+
+def colorcycle():
+    '''
+    Cycles through three colors with for loop
+    '''
     colorsensor = BrickPiColorSensor("NXT",PORT_1)
     colorsensor.set_red_lamp()
-
-    
-    while True:
+    for i in range(10):
         time.sleep(1)
         colorsensor.set_next_color_lamp()
+
+
+def colorcycle2():
+    '''
+    Cycles through three colors with 'with' statement
+    '''
+    with BrickPiColorSensor("NXT",PORT_1) as colorsensor:
+        colorsensor.set_red_lamp()
+        for i in range(10):
+            colorsensor.set_next_color_lamp()
+
+def ev3color():
+    colorsensor = BrickPiColorSensor("EV3",PORT_4)
+    colorsensor.set_color_mode()
+    for i in range(4):
+        color = colorsensor.read()
+        print "color: ",color
+        time.sleep(1)
+
+if __name__ == "__main__":
+    #colorcycle()
+    colorcycle2()
+    #ev3color()
