@@ -142,19 +142,20 @@ class BrickPiMotor(BrickPiSensor):
 
     def __exit__(self,exc_type,exc_value,traceback):
         self.power=0
-        BrickPiUpdateValues()
 
 
     def set_power(self,in_power=200):
         '''
         power must be between -255 and 254 and be an integer
-        alternatively power can be a percentage if the % is added to it (100%) 
         power is assumed to be positive but can very well be negative
+            if power is negative go_backwards will actually go forward
+        We keep track of the required power but we don't transfer it yet to
+        the firmware. 
+            The transfer will be done when movement is actually required
+
         '''
-        #debug( "type for power is {} and power is {}".format(type(in_power),in_power))
         try:
             self.power = int(in_power)
-        #    debug ("self.power: {}".format(self.power))
         except:
             raise ValueError("Power must be an integer between -255 and 254")
         if self.power > 254 or self.power < -255:
@@ -233,7 +234,7 @@ class BrickPiMotors():
         self.stop(in_coast)
 
 
-    def go_backward(self,in_secs=0, in_coast=False):
+    def go_backward(self,in_secs=0, in_coast=True):
         '''
         in_secs = how long should motors go forward 
                  if non zero, this is blocking
