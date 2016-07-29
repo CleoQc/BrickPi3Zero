@@ -30,7 +30,7 @@ class BrickPiSensor():
         '''
         def __init__(self, threadID, name, counter):
             Thread.__init__(self)
-            debug("starting thread")
+            debug("getting thread started")
             self.threadID = threadID
             self.name = name
             self.counter = counter
@@ -38,13 +38,14 @@ class BrickPiSensor():
         def run(self):
             debug ("starting run")
             while True:
-                while self.threading_is_needed:
+                if self.threading_is_needed:
                     try:
                         BrickPiUpdateValues()       # Ask BrickPi to update values for sensors/motors
                         time.sleep(.2)              # sleep for 200 ms
                     except:
                         pass
-                pass
+                else:
+                    debug("suspended")
 
         # def __enter__(self):
         #     return self
@@ -57,11 +58,15 @@ class BrickPiSensor():
     threading_is_needed = True
 
     if start_thread is False:
-        print("starting thread")
-        update_thread = BrickPiThread(1, "MotorThread",1)
+        debug("starting thread")
+        update_thread = BrickPiThread(1, "SensorThread",1)
+        # let's assume that we run the updating thread by default
+        update_thread.threading_is_needed = True
+
+        # and let's start the thread now!
         update_thread.setDaemon(True)
         update_thread.start()
-        update_thread.threading_is_needed = False
+        # only one thread is needed.
         start_thread = True
 
     def __init__(self,in_type,in_port):
@@ -106,9 +111,11 @@ class BrickPiSensor():
 
     def suspend_updates(self):
         self.update_thread.threading_is_needed  = False
+        debug("suspend udpates")
 
     def restart_updates(self):
         self.update_thread.threading_is_needed = True
+        debug("restart updates")
 
     def set_mode(self,in_mode):
         '''
@@ -225,6 +232,7 @@ class BrickPiMotors():
                   True is hard stop, False is coasting
         '''
         self.motors[0].suspend_updates()
+        time.sleep(1)
         for i in range(len(self.motors)):
             self.motors[i].go_forward()
         self.motors[0].restart_updates()
@@ -488,13 +496,25 @@ def ev3color():
         time.sleep(1)
 
 def motorhandling():
+    '''
+    Expected setup: one motor in Port A
+    Expected behavior: go forward for 1 sec, 
+                       go backwards at low power for 5
+                       coast to rest
+    '''
     motor1 = BrickPiMotor("NXT",PORT_A)
+    debug("going forward")
     motor1.go_forward()
     time.sleep(1)
+    debug("done with sleep")
     motor1.set_power(20)
+    debug("setting low power")
     motor1.go_backward()
+    debug("going backward")
     time.sleep(5)
+    debug("done with sleep")
     motor1.coast()
+    debug("done with coasting")
 
 def carhandling():
     motor1 = BrickPiMotor("NXT",PORT_A)
@@ -512,8 +532,9 @@ def doubleduty():
     propulsion = BrickPiMotors([motor1,motor2])
     colorsensor = BrickPiColorSensor("NXT",PORT_1)
     propulsion.go_forward(in_secs=5)
-    colorsensor.set_red_lamp()
+    time.sleep(2)
     motor1.go_forward()
+    colorsensor.set_red_lamp()
     for i in range(10):
         time.sleep(1)
         colorsensor.set_next_color_lamp()
